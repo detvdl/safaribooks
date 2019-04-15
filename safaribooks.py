@@ -7,6 +7,7 @@ import json
 import shutil
 import logging
 import argparse
+import subprocess
 import traceback
 import datetime
 import requests
@@ -275,6 +276,9 @@ class SafariBooks:
     def __init__(self, args):
         self.session = requests.Session()
         self.args = args
+        self.formats = args.formats
+        self.reader = args.reader
+        self.conversions = {}
         self.cookies = {}
         self.books_dir = "Books"
         self.book_ids = args.bookids
@@ -359,18 +363,48 @@ class SafariBooks:
             self.collect_images()
 
             self.display.info("Creating EPUB file...", state=True)
-            self.create_epub()
+            epub_file = self.create_epub()
 
             if not args.no_cookies:
                 json.dump(self.cookies, open(COOKIES_FILE, "w"))
 
-            self.display.done(os.path.join(self.BOOK_PATH, self.book_id + ".epub"))
+            self.display.done(epub_file)
+            for format in self.formats:
+                if not bookid in self.conversions:
+                    self.conversions[bookid] = []
+                command = self.convert_command(format, epub_file)
+                self.conversions[bookid] += [command]
+
             self.display.unregister()
 
             if not self.display.in_error and not args.log:
                 os.remove(self.display.log_file)
 
+        print("Starting conversion of books to requested file formats...")
+        print("=========================================================")
+        for bookid, conversions in self.conversions.items():
+            for conversion in conversions:
+                print("Converting {0} from {1} to {2}...".format(conversion["filename"],
+                                                                 conversion["input"],
+                                                                 conversion["output"]))
+                subprocess.run(conversion["command"], stdout=subprocess.DEVNULL)
+
         sys.exit(0)
+
+    def convert_command(self, output_format, path):
+        base_dir = os.path.dirname(os.path.realpath(path))
+        book_name = os.path.basename(base_dir)
+        dest_dir = os.path.join(base_dir, output_format)
+        if not os.path.isdir(dest_dir):
+            os.makedirs(dest_dir, exist_ok=True)
+        destination = os.path.join(dest_dir, book_name) + "." + output_format
+        command = ["ebook-convert", path, destination]
+        if self.reader is not None:
+            command += ["--output-profile", self.reader, "--enable-heuristics"]
+        return {"input": "epub",
+                "output": output_format,
+                "filename": book_name,
+                "command": command}
 
     def get_playlist_books(self):
         url = self.COLLECTIONS_TEMPLATE.format(self.playlist_id)
@@ -1008,8 +1042,14 @@ class SafariBooks:
             os.remove(zip_file + ".zip")
 
         shutil.make_archive(zip_file, 'zip', self.BOOK_PATH)
-        os.rename(zip_file + ".zip", os.path.join(self.BOOK_PATH, self.book_id) + ".epub")
+        epub_file = os.path.join(self.BOOK_PATH, self.book_id) + ".epub"
+        os.rename(zip_file + ".zip", epub_file)
+        return epub_file
 
+def check_calibre():
+    if shutil.which("ebook-convert") is None:
+        print("When specifying formats, please make sure Calibre is installed and available in your $PATH")
+        sys.exit(1)
 
 # MAIN
 if __name__ == "__main__":
@@ -1037,6 +1077,9 @@ if __name__ == "__main__":
         "--preserve-log", dest="log", action='store_true', help="Leave the `info_XXXXXXXXXXXXX.log`"
         " file even if there isn't any error."
     )
+    arguments.add_argument("--reader", action="store", dest="reader",
+                            help="E-reader type. Enables conversion to optimize for specific e-readers.")
+    arguments.add_argument("--formats", nargs='+', action="store", dest="formats", default=None, help="Output formats. Requires Calibre to be installed and the `ebook-convert` executable on your $PATH.")
     arguments.add_argument("--help", action="help", default=argparse.SUPPRESS, help='Show this help message.')
     arguments.add_argument(
         "bookids", metavar='<BOOK ID>', nargs='*',
@@ -1063,5 +1106,10 @@ if __name__ == "__main__":
 
     if not args_parsed.playlist and len(args_parsed.bookids) == 0:
         arguments.error("Either a playlist ID or at least one BOOK ID must be specified")
+
+    if args_parsed.formats is not None or args_parsed.reader is not None:
+        check_calibre()
+    if args_parsed.formats is not None:
+        args_parsed.formats = set(args_parsed.formats)
 
     SafariBooks(args_parsed)

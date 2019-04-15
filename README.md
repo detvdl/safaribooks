@@ -44,10 +44,10 @@ Like: `https://www.safaribooksonline.com/library/view/test-driven-development-wi
 #### Program options:
 ```shell
 $ python3 safaribooks.py --help
-usage: safaribooks.py [--cred <EMAIL:PASS>] [--playlist ID]
-                      [--no-cookies] [--no-kindle] [--preserve-log]
-                      [--help]
-                      <BOOK ID> <BOOK ID> ...
+usage: safaribooks.py [--cred <EMAIL:PASS>] [--playlist ID] [--reader READER]
+                      [--formats format1 [format2 ...]] [--no-cookies]
+                      [--no-kindle] [--preserve-log]
+                      [--help] [<BOOK ID> [<BOOK ID> ...]]
 
 Download and generate EPUB of your favorite books from Safari Books Online.
 
@@ -62,6 +62,20 @@ optional arguments:
   --cred <EMAIL:PASS>  Credentials used to perform the auth login on Safari
                        Books Online.
                        Es. ` --cred "account_mail@mail.com:password01" `.
+  --formats            Conversion target formats. Requires Calibre to be installed
+                       and the `ebook-convert` executable to be available on your
+                       $PATH
+  --reader             E-reader profile type for epub/mobi/... conversion targets.
+                       Available options are:
+
+                       cybookg3, cybook_opus, default, generic_eink, generic_eink_hd,
+                       generic_eink_large, hanlinv3, hanlinv5, illiad, ipad, ipad3,
+                       irexdr1000,   irexdr800,   jetbook5,  kindle,  kindle_dx,
+                       kindle_fire,  kindle_oasis, kindle_pw, kindle_pw3, kindle_voyage,
+                       kobo, msreader,  mobipocket, nook,  nook_color,  nook_hd_plus,
+                       pocketbook_900, pocketbook_pro_912, galaxy, sony, sony300, sony900,
+                       sony-landscape, sonyt3, tablet
+
   --playlist ID        Download an entire playlist of books at once.
                        Overrides any positional book ids provided.
   --no-cookies         Prevent your session data to be saved into
