@@ -427,7 +427,7 @@ class SafariBooks:
         ourns = [book.get("ourn") for book in response.get("content")]
         ids = []
         for ourn in ourns:
-            result = re.search('urn:orm:book:([^:]*)(?::.+)', ourn)
+            result = re.search('urn:orm:book:([^:]*)(?::.+)*', ourn)
             if result:
                 ids.append(result.group(1))
         return ids
