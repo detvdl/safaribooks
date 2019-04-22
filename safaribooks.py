@@ -152,7 +152,10 @@ class Display:
             )
 
     def done(self, epub_file):
-        self.info("Done: %s\n\n" % epub_file +
+        self.info("Done: %s\n\n" % epub_file)
+
+    def done(self):
+        self.info("Finished!\n\n"
                   "    If you like it, please * this project on GitHub to make it known:\n"
                   "        https://github.com/lorenzodifuccia/safaribooks\n"
                   "    e don't forget to renew your Safari Books Online subscription:\n"
@@ -369,11 +372,12 @@ class SafariBooks:
                 json.dump(self.cookies, open(COOKIES_FILE, "w"))
 
             self.display.done(epub_file)
+
             for format in self.formats:
                 if not bookid in self.conversions:
                     self.conversions[bookid] = []
-                command = self.convert_command(format, epub_file)
-                self.conversions[bookid] += [command]
+                    command = self.convert_command(format, epub_file)
+                    self.conversions[bookid] += [command]
 
             self.display.unregister()
 
@@ -389,6 +393,8 @@ class SafariBooks:
                                                                  conversion["output"]))
                 subprocess.run(conversion["command"], stdout=subprocess.DEVNULL)
 
+        self.display.done()
+
         sys.exit(0)
 
     def convert_command(self, output_format, path):
@@ -397,8 +403,8 @@ class SafariBooks:
         dest_dir = os.path.join(base_dir, output_format)
         if not os.path.isdir(dest_dir):
             os.makedirs(dest_dir, exist_ok=True)
-        destination = os.path.join(dest_dir, book_name) + "." + output_format
-        command = ["ebook-convert", path, destination]
+            destination = os.path.join(dest_dir, book_name) + "." + output_format
+            command = ["ebook-convert", path, destination]
         if self.reader is not None:
             command += ["--output-profile", self.reader, "--enable-heuristics"]
         return {"input": "epub",
@@ -849,9 +855,9 @@ class SafariBooks:
             response = self.requests_provider(url, update_cookies=False)
             if response == 0:
                 self.display.error("Error trying to retrieve this CSS: %s\n    From: %s" % (css_file, url))
-
-            with open(css_file, 'wb') as s:
-                s.write(response.content)
+            else:
+                with open(css_file, 'wb') as s:
+                    s.write(response.content)
 
         self.css_done_queue.put(1)
         self.display.state(len(self.css), self.css_done_queue.qsize())
@@ -1078,7 +1084,7 @@ if __name__ == "__main__":
         " file even if there isn't any error."
     )
     arguments.add_argument("--reader", action="store", dest="reader",
-                            help="E-reader type. Enables conversion to optimize for specific e-readers.")
+                           help="E-reader type. Enables conversion to optimize for specific e-readers.")
     arguments.add_argument("--formats", nargs='+', action="store", dest="formats", default=None, help="Output formats. Requires Calibre to be installed and the `ebook-convert` executable on your $PATH.")
     arguments.add_argument("--help", action="help", default=argparse.SUPPRESS, help='Show this help message.')
     arguments.add_argument(
